@@ -1,5 +1,7 @@
 (in-package :cl-user)
 
+#+sbcl (require :sb-cltl2)
+
 (defpackage :trivial-cltl2
   (:nicknames :cltl2)
   (:use :cl
