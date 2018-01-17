@@ -1,6 +1,8 @@
 (in-package :cl-user)
 
-#+sbcl (require :sb-cltl2)
+#+sbcl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (require "sb-cltl2"))
 
 (defpackage :trivial-cltl2
   (:nicknames :cltl2)
