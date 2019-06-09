@@ -12,14 +12,16 @@
         #+cmu #:ext
         #+allegro #:sys
         #+ecl #:si
-        #+abcl #:lisp)
+        #+abcl #:lisp
+        #+lispworks #:hcl
+        #+lispworks #:lw)
   #+allegro (:import-from #:excl #:compiler-let)
   (:export #:compiler-let
            #:variable-information
            #:function-information
            #:declaration-information
            #:augment-environment
-           #:define-declaration
+           #+lispwork7.1 #:define-declaration
            #:parse-macro
            #:enclose))
 
