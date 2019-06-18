@@ -6,13 +6,14 @@ Exports symbols from implementation-specific packages.
 
 ## Interface
 
+### compiler-let
 *Macro* **compiler-let**  (**&rest** *bindings*) **&body** *body*
 
-### Description
+#### Description
 When executed by the Lisp interpreter, compiler-let behaves exactly like let with all the variable bindings implicitly declared special. When the compiler processes this form, however, no code is compiled for the bindings; instead, the processing of the body by the compiler (including, in particular, the expansion of any macro calls within the body) is done with the special variables bound to the indicated values in the execution context of the compiler. This is primarily useful for communication among complicated macros.
 Declarations may not appear at the beginning of the body of a compiler-let.
 
-### Example
+#### Example
 
 ``` common-lisp
 
@@ -26,9 +27,10 @@ Declarations may not appear at the beginning of the body of a compiler-let.
     (bar)))
 ```
 
+### variable-information
 *Function* **variable-information** *variable* **&optional** *env*
 
-### Description
+#### Description
 This function returns information about the interpretation of the symbol variable when it appears as a variable within the lexical environment env. Three values are returned.
 
 The first value indicates the type of definition or binding for variable in env:
@@ -58,9 +60,10 @@ The a-list might contain multiple entries for a given key. The consequences of d
 
 Note that the global binding might differ from the local one and can be retrieved by calling variable-information with a null lexical environment.
 
+### function-information
 *Function* **function-information** *function* **&optional** *env*
 
-### Description
+#### Description
 This function returns information about the interpretation of the function-name function when it appears in a functional position within lexical environment env. Three values are returned.
 
 The first value indicates the type of definition or binding of the function-name which is apparent in env:
@@ -89,9 +92,10 @@ The a-list might contain multiple entries for a given key. In this case the valu
 
 Note that the global binding might differ from the local one and can be retrieved by calling function-information with a null lexical environment.
 
+### declaration-information
 *Function* **declaration-information** *decl-name* **&optional** *env*
 
-### Description
+#### Description
 This function returns information about declarations named by the symbol decl-name that are in force in the environment env. Only declarations that do not apply to function or variable bindings can be accessed with this function. The format of the information that is returned depends on the decl-name involved.
 
 It is required that this function recognize optimize and declaration as decl-names. The values returned for these two cases are as follows:
@@ -102,9 +106,10 @@ declaration
 A single value is returned, a list of the declaration names that have been proclaimed as valid through the use of the declaration proclamation. The consequences of destructively modifying this list or its elements are undefined.
 If an implementation is extended to recognize additional declaration specifiers in declare or proclaim, it is required that either the declaration-information function should recognize those declarations also or the implementation should provide a similar accessor that is specialized for that declaration specifier. If declaration-information is used to return the information, the corresponding decl-name must not be a symbol that is external in any package defined in the standard or that is otherwise accessible in the common-lisp-user package.
 
+### augment-environment
 *Function* **augment-environment** *env* **&key** *variable* *symbol-macro* *function* *macro* *declare*
 
-### Description
+#### Description
 This function returns a new environment containing the information present in env augmented with the information provided by the keyword arguments. It is intended to be used by program analyzers that perform a code walk.
 
 The arguments are supplied as follows.
@@ -126,9 +131,10 @@ The extent of the returned environment is the same as the extent of the argument
 
 While an environment argument received by an *evalhook* function is permitted to be used as the environment argument to augment-environment, the consequences are undefined if an attempt is made to use the result of augment-environment as the environment argument for evalhook. The environment returned by augment-environment can be used only for syntactic analysis, that is, as an argument to the functions defined in this section and functions such as macroexpand.
 
+### define-declaration
 *Macro* **define-declaration** *decl-name* *lambda-list* **&body** *body*
 
-### Description
+#### Description
 This macro defines a handler for the named declaration. It is the mechanism by which augment-environment is extended to support additional declaration specifiers. The function defined by this macro will be called with two arguments, a declaration specifier whose car is decl-name and the env argument to augment-environment. This function must return two values. The first value must be one of the following keywords:
 
 :variable
@@ -146,14 +152,16 @@ The consequences are undefined if decl-name is a symbol that can appear as the c
 
 The consequences are also undefined if the return value from a declaration handler defined with define-declaration includes a key name that is used by the corresponding accessor to return information about any standard declaration specifier. (For example, if the first return value from the handler is :variable, the second return value may not use the symbols dynamic-extent, ignore, or type as key names.)
 
+### parse-macro
 *Function* **parse-macro** *lambda-list* *body* **&optional** *env*
 
-### Description
+#### Description
 This function is used to process a macro definition in the same way as defmacro and macrolet. It returns a lambda-expression that accepts two arguments, a form and an environment. The name, lambda-list, and body arguments correspond to the parts of a defmacro or macrolet definition.
 
 The lambda-list argument may include &environment and &whole and may include destructuring. The name argument is used to enclose the body in an implicit block and might also be used for implementation-dependent purposes (such as including the name of the macro in error messages if the form does not match the lambda-list).
 
+### enclose
 *Function* **enclose** *lambda-expression* **&optional** *env*
 
-### Description
+#### Description
 This function returns an object of type function that is equivalent to what would be obtained by evaluating `(function ,lambda-expression) in a syntactic environment env. The lambda-expression is permitted to reference only the parts of the environment argument env that are relevant only to syntactic processing, specifically declarations and the definitions of macros and symbol macros. The consequences are undefined if the lambda-expression contains any references to variable or function bindings that are lexically visible in env, any go to a tag that is lexically visible in env, or any return-from mentioning a block name that is lexically visible in env.
