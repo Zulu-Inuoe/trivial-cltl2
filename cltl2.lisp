@@ -12,8 +12,10 @@
         #+cmu #:ext
         #+allegro #:sys
         #+ecl #:si
-        #+abcl #:lisp)
+        #+abcl #:lisp
+	#+lispworks #:hcl)
   #+allegro (:import-from #:excl #:compiler-let)
+  #+lispworks (:import-from #:lw #:compiler-let)
   (:export #:compiler-let
            #:variable-information
            #:function-information
