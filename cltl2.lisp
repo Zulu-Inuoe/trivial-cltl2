@@ -1,5 +1,3 @@
-(in-package #:cl-user)
-
 #+sbcl
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require "sb-cltl2"))
@@ -13,7 +11,7 @@
         #+allegro #:sys
         #+ecl #:si
         #+abcl #:lisp
-	#+lispworks #:hcl)
+        #+lispworks #:hcl)
   #+allegro (:import-from #:excl #:compiler-let)
   #+lispworks (:import-from #:lw #:compiler-let)
   (:export #:compiler-let
