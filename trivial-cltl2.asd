@@ -3,4 +3,5 @@
   :author "Tomohiro Matsuyama"
   :description "Compatibility package exporting CLtL2 functionality"
   :license "LLGPL"
-  :components ((:file "cltl2")))
+  :components ((:file "cltl2")
+               (:file "allegro" :if-feature :allegro)))
