@@ -1,35 +1,39 @@
 (in-package #:trivial-cltl2)
 
-(defun allegro-information-alist-kludge (alist &optional environment) ; XXX
-  "Allegro 10.1 returns a type specifier IN A LIST, like '((ARRAY (INTEGER 0 1) (*))))'.
-So I unwrap it.."
-  (flet ((valid-type-specifier-p (spec)
-           (ignore-errors (subtypep spec spec environment))))
-    (let* ((type-spec (cdr (assoc 'type alist))))
-      (unless (valid-type-specifier-p type-spec)
-        (assert (and (consp type-spec)
-                     (= (length type-spec) 1)
-                     (valid-type-specifier-p (first type-spec)))
-                ()
-                "Unexpected format type-specifier: ~A" type-spec)
-        (push (cons 'type (first type-spec))
-              alist)))
-    alist))
+(defun valid-type-specifier-p (spec &optional environment)
+  (ignore-errors (subtypep spec spec environment)))
+
+(defun allegro-information-alist-type-kludge (alist &optional environment)
+  "Allegro 10.1 sometimes returns a type specifier IN A LIST, like
+'((ARRAY (INTEGER 0 1) (*))))'.  This function tries to unwrap it..."
+  ;; See also: https://github.com/ruricolist/serapeum/pull/47
+  (let ((type-spec (cdr (assoc 'type alist))))
+    (unless (valid-type-specifier-p type-spec environment)
+      (assert (and (consp type-spec)
+                   (= (list-length type-spec) 1)
+                   (valid-type-specifier-p (first type-spec)))
+              ()
+              "Unexpected format type-specifier: ~A" type-spec)
+      (push (cons 'type (first type-spec))
+            alist)))
+  alist)
 
 (defun variable-information (symbol &optional environment all-declarations)
   "Compatibility layer for Allegro's `system:variable-information',
-which takes extra parameters and returns different values from the CLtL2's function."
+which takes extra optional parameters and returns different values
+from the CLtL2's function."
   ;; See https://franz.com/support/documentation/current/doc/operators/system/variable-information.htm
   (multiple-value-bind (type locative-cons alist local-p)
       (system:variable-information symbol environment all-declarations)
     (values type
             local-p
-            (allegro-information-alist-kludge alist)
+            (allegro-information-alist-type-kludge alist)
             locative-cons)))
 
 (defun function-information (fspec &optional environment all-declarations special-operators)
   "Compatibility layer for Allegro's `system:function-information',
-which returns different values from the CLtL2's function."
+which takes extra optional parameters returns different values from
+the CLtL2's function."
   ;; See https://franz.com/support/documentation/current/doc/operators/system/function-information.htm
   (multiple-value-bind (type locative-cons alist local-p)
       (system:function-information fspec environment all-declarations special-operators)
@@ -37,16 +41,54 @@ which returns different values from the CLtL2's function."
               (:special-operator :special-form)
               (otherwise type))
             local-p
-            (allegro-information-alist-kludge alist)
+            alist
             locative-cons)))
 
-(defmacro define-declaration (decl-name lambda-list &body body)
-  "Compatibility layer for Allegro's `system:function-information',
-which has very different arguments and return values."
-  `(system:define-declaration ,decl-name ,lambda-list
-     ,decl-name                         ; 'prop' argument.
-     :both                              ; 'kind' argument. TODO: guess
-     (lambda (decl-name env) ,@body)))  ; 'def' argument.
+;;; For `define-declaration', I referred 'cl-environments' by Alexander Gutev.
+;;; https://github.com/alex-gutev/cl-environments/blob/master/src/other/allegro.lisp
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun guess-declaration-kind-from-body (body)
+    "Guess the kind parameter of `system:define-declaration' from the
+ BODY and return the kind or NIL if failed to guess.
+
+ Currently this works only for the simplest case, like:
+ > (define-declaration foo (spec env)
+ >   (values :variable (...))) "
+    (let ((last-form (car (last body))))
+      (if (eq (first last-form) 'values)
+          (second last-form)
+          nil)))
+
+  (defun convert-allegro-define-declaration-result (kind second-value)
+    (ecase kind
+      ((:variable :function :both)      ; :BOTH is allegro-specific.
+       (values kind second-value))
+      (:declare
+       ;; Cited from https://franz.com/support/documentation/current/doc/operators/system/define-declaration.htm
+       ;; > if the kind is :declare, the list returned is a list of
+       ;; > (list key value) instead of the cons that is specified
+       ;; > there, to ease the consistency of the implementation).
+       (values kind
+               (list (list (car second-value)
+                           (cdr second-value))))))))
+
+(defmacro define-declaration (decl-name (decl-spec-arg env-arg) &body body)
+  "Compatibility layer for Allegro's `system:define-declaration',
+which has very different arguments and return values from the CLtL2's one."
+  ;; See https://franz.com/support/documentation/current/doc/operators/system/define-declaration.htm
+  (let ((guessed-kind (guess-declaration-kind-from-body body)))
+    (unless guessed-kind
+      (warn "TRIVIAL-CLTL2:DEFINE-DECLARATION failed to guess the kind of declaration '~A'.
+  Please use SYSTEM:DEFINE-DECLARATION for specifying exactly."
+            decl-name))
+    `(system:define-declaration ,decl-name
+         (&rest ,(gensym "declaration-syntax-lambda-list-args")) ; 'lambda-list' argument.
+       ,decl-name                       ; 'prop' argument.
+       ,(or guessed-kind :both)         ; 'kind' argument.
+       (lambda (,decl-spec-arg ,env-arg) ; 'def' argument.
+         (multiple-value-call #'convert-allegro-define-declaration-result
+           (locally ,@body)))))) ; I use `locally' for accepting declarations in BODY.
 
 ;;; This code is derived from 'clweb' by Alex Plotnick,
 ;;; https://github.com/plotnick/clweb/blob/4c736b4c8b4c0afbdd939eefbcb986c16c24c1e3/clweb.lisp#L1853
