@@ -73,11 +73,13 @@ the CLtL2's function."
                (list (list (car second-value)
                            (cdr second-value))))))))
 
-(defmacro define-declaration (decl-name (decl-spec-arg env-arg) &body body)
+(defmacro define-declaration (decl-name lambda-list &body body)
   "Compatibility layer for Allegro's `system:define-declaration',
 which has very different arguments and return values from the CLtL2's one."
   ;; See https://franz.com/support/documentation/current/doc/operators/system/define-declaration.htm
-  (let ((guessed-kind (guess-declaration-kind-from-body body)))
+  (let ((guessed-kind (guess-declaration-kind-from-body body))
+        (decl-spec-arg (gensym "decl-spec-arg"))
+        (env-arg (gensym "env-arg")))
     (unless guessed-kind
       (warn "TRIVIAL-CLTL2:DEFINE-DECLARATION failed to guess the kind of declaration '~A'.
   Please use SYSTEM:DEFINE-DECLARATION for specifying exactly."
@@ -88,7 +90,11 @@ which has very different arguments and return values from the CLtL2's one."
        ,(or guessed-kind :both)         ; 'kind' argument.
        (lambda (,decl-spec-arg ,env-arg) ; 'def' argument.
          (multiple-value-call #'convert-allegro-define-declaration-result
-           (locally ,@body)))))) ; I use `locally' for accepting declarations in BODY.
+           ;; I use `lambda' for accepting a docstring and/or
+           ;; declarations in BODY.
+           ((lambda ,lambda-list ,@body)
+            ,decl-spec-arg
+            ,env-arg))))))
 
 ;;; This code is derived from 'clweb' by Alex Plotnick,
 ;;; https://github.com/plotnick/clweb/blob/4c736b4c8b4c0afbdd939eefbcb986c16c24c1e3/clweb.lisp#L1853
