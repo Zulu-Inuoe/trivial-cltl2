@@ -8,6 +8,7 @@
         #+sbcl #:sb-cltl2
         #+openmcl #:ccl
         #+cmu #:ext
+        #+clasp #:clasp-cltl2
         #+ecl #:si
         #+abcl #:lisp
         #+lispworks #:hcl)
